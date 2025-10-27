@@ -1,0 +1,125 @@
+default: help
+
+
+## ==== Container control ==============================================================================================
+
+start: _guard_env ## Bring all containers up.
+	docker compose up -d
+
+
+stop:  ## Stop all containser.
+	docker compose stop
+
+
+tear-down: _confirm ## Bring down and destroy all containers.
+	docker compose down --remove-orphans
+
+
+## ==== Advanced container actions =====================================================================================
+
+migrate: _guard_env  ## Apply all database migrations with the db-migrate init container.
+	docker compose up -d db-migrate
+
+bash: _guard_env  ## Connect to a terminal session inside the api container.
+	docker compose exec -it api bash
+
+psql: _guard_env start  ## Connect a psql session to the postgres instance running in the db container
+	psql postgresql://$(DB_USER):$(DB_PSWD)@localhost:5432/$(DB_NAME)
+
+
+## ==== Helpers ========================================================================================================
+
+dotenv: ## Create the .env file for this example
+	@echo "$$DOTENV" > .env
+
+compose:
+	@echo "$$COMPOSE_FILE" > docker-compose.yaml
+
+
+clean: _confirm  ## Remove .env file
+	@rm .env
+
+help:  ## Show help message
+	@awk "$$PRINT_HELP_PREAMBLE" $(MAKEFILE_LIST)
+
+
+## ---- Make configuration ---------------------------------------------------------------------------------------------
+
+.ONESHELL:
+SHELL:=/bin/bash
+.PHONY: default start stop tear-down migrate bash psql clean help _guard_env _load_dotenv _confirm
+
+
+## ---- Hidden auxiliary targets ---------------------------------------------------------------------------------------
+
+_guard_env:  # Ensures a .env file has been prepared
+	@if [[ ! -e ".env" ]]; then \
+		echo -e "No $(YELLOW).env$(CLEAR) found! Prepare one first according to the README."; \
+		exit 1; \
+	fi
+
+_load_dotenv: _guard_env  # Loads .env file into the shell environment
+include .env
+	export
+
+_confirm:  # Requires confirmation before proceeding (Do not use directly)
+	@echo -n "Are you sure? [y/N] " && read ans && [ $${ans:-N} = y ]
+
+
+## ---- Help printer ---------------------------------------------------------------------------------------------------
+
+RED    := \033[31m
+GREEN  := \033[32m
+YELLOW := \033[33m
+BLUE   := \033[34m
+TEAL   := \033[36m
+CLEAR  := \033[0m
+
+
+define PRINT_HELP_PREAMBLE
+BEGIN {
+	print "Usage: $(YELLOW)make <target>$(CLEAR)"
+	print
+	print "Targets:"
+}
+/^## =+ [^=]+ =+.*/ {
+    s = $$0
+    sub(/^## =+ /, "", s)
+    sub(/ =+/, "", s)
+	printf("\n  %s:\n", s)
+}
+/^[$$()% 0-9a-zA-Z_\/-]+(\\:[$$()% 0-9a-zA-Z_\/-]+)*:.*?##/ {
+    t = $$0
+    sub(/:.*/, "", t)
+    h = $$0
+    sub(/.?*##/, "", h)
+    printf("    $(YELLOW)%-19s$(CLEAR) $(TEAL)%s$(CLEAR)\n", t, h)
+}
+endef
+export PRINT_HELP_PREAMBLE
+
+define DOTENV
+API_PORT=8080
+DB_NAME=dummy-name
+DB_PSWD=dummy-pswd
+DB_USER=dummy-user
+endef
+export DOTENV
+
+define COMPOSE_FILE
+services:
+  api:
+    image: nginxdemos/nginx-hello
+    ports:
+      - "$${API_PORT}:80"
+
+  db:
+    image: postgres:latest
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=$${DB_NAME}
+      - POSTGRES_PASSWORD=$${DB_PSWD}
+      - POSTGRES_USER=$${DB_USER}
+endef
+export COMPOSE_FILE

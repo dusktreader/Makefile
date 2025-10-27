@@ -1,0 +1,14 @@
+services:
+  api:
+    image: nginxdemos/nginx-hello
+    ports:
+      - "${API_PORT}:80"
+
+  db:
+    image: postgres:latest
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_PASSWORD=${DB_PSWD}
+      - POSTGRES_USER=${DB_USER}

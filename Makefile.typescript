@@ -1,0 +1,97 @@
+default: help
+
+
+## ==== Install ========================================================================================================
+
+install:  ## Install dependencies
+	npm install
+
+
+## ==== Quality Control ================================================================================================
+
+
+qa: qa/full  ## Shortcut for qa/full
+
+qa/test: install  ## Run the tests
+	npx vitest run
+
+qa/types: install  ## Run static type checks
+	npx tsc --noEmit
+
+qa/lint: install  ## Run linters
+	npx eslint src
+
+qa/full: qa/test qa/lint qa/types  ## Run the full set of quality checks
+	@echo "All quality checks pass!"
+
+qa/format: install  ## Run code formatter
+	npx prettier src --write
+
+
+## ==== Build ==========================================================================================================
+
+build: install  ## Build the package
+	npx tsc
+	npx vite build
+
+
+## ==== Publish ========================================================================================================
+
+publish: install build  ## Publish the package
+	npm publish
+
+
+## ==== Helpers ========================================================================================================
+
+clean:  ## Clean up build artifacts and other junk
+	@rm -rf dist
+	@rm -rf coverage
+
+help:  ## Show help message
+	@awk "$$PRINT_HELP_PREAMBLE" $(MAKEFILE_LIST)
+
+
+## ---- Make configuration ---------------------------------------------------------------------------------------------
+
+.ONESHELL:
+SHELL:=/bin/bash
+.PHONY: default install qa qa/test qa/types qa/lint qa/full qa/format build publish clean help
+
+
+## ---- Hidden auxiliary targets ---------------------------------------------------------------------------------------
+
+_confirm:  # Requires confirmation before proceeding (Do not use directly)
+	@echo -n "Are you sure? [y/N] " && read ans && [ $${ans:-N} = y ]
+
+
+## ---- Help printer ---------------------------------------------------------------------------------------------------
+
+RED    := \033[31m
+GREEN  := \033[32m
+YELLOW := \033[33m
+BLUE   := \033[34m
+TEAL   := \033[36m
+CLEAR  := \033[0m
+
+
+define PRINT_HELP_PREAMBLE
+BEGIN {
+	print "Usage: $(YELLOW)make <target>$(CLEAR)"
+	print
+	print "Targets:"
+}
+/^## =+ [^=]+ =+.*/ {
+    s = $$0
+    sub(/^## =+ /, "", s)
+    sub(/ =+/, "", s)
+	printf("\n  %s:\n", s)
+}
+/^[$$()% 0-9a-zA-Z_\/-]+(\\:[$$()% 0-9a-zA-Z_\/-]+)*:.*?##/ {
+    t = $$0
+    sub(/:.*/, "", t)
+    h = $$0
+    sub(/.?*##/, "", h)
+    printf("    $(YELLOW)%-19s$(CLEAR) $(TEAL)%s$(CLEAR)\n", t, h)
+}
+endef
+export PRINT_HELP_PREAMBLE

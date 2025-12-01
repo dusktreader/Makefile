@@ -39,6 +39,26 @@ pattern-guarded/%: _guard_species/%  ## A target with a pattern that includes a 
 	@echo Executing target with a pattern guard where species=$(notdir $@)
 
 
+## ==== Targets with sub-sections ======================================================================================
+
+## ---- Sub-section 1 --------------------------------------------------------------------------------------------------
+
+target1-1: ## Target 1 in sub-section 1
+	@echo Executing target 1 in sub-section 1
+
+target1-2: ## Target 2 in sub-section 1
+	@echo Executing target 2 in sub-section 1
+
+
+## ---- Sub-section 2 --------------------------------------------------------------------------------------------------
+
+target2-1: ## Target 1 in sub-section 2
+	@echo Executing target 1 in sub-section 2
+
+target2-2: ## Target 2 in sub-section 2
+	@echo Executing target 2 in sub-section 2
+
+
 ## ==== Targets with confirmation ======================================================================================
 
 confirmed: _confirm ## A target that requires confirmation to continue
@@ -51,18 +71,31 @@ help:  ## Show this help message
 	@awk "$$PRINT_HELP_PREAMBLE" $(MAKEFILE_LIST)
 
 
-## ---- Make configuration ---------------------------------------------------------------------------------------------
+# ..... Make configuration .............................................................................................
 
 .ONESHELL:
 SHELL := /bin/bash
 .PHONY: default basic basic-no-help basic-preq \
 	pattern/% pattern-notdir/% pattern-preq/% \
 	var-guarded pattern-guarded/% \
+	target1-1 target1-2 target2-1 target2-2 \
 	confirmed \
 	clean help
 
 
-## ---- Hidden auxiliary targets ---------------------------------------------------------------------------------------
+# ..... Color table for pretty printing ................................................................................
+
+RED    := \033[31m
+GREEN  := \033[32m
+YELLOW := \033[33m
+BLUE   := \033[34m
+TEAL   := \033[36m
+GRAY   := \033[90m
+CLEAR  := \033[0m
+ITALIC := \033[3m
+
+
+# ..... Hidden auxiliary targets .......................................................................................
 
 _guard_species/%:  # Ensures a valid species is selected (Do not use directly)
 	@if ! echo "$(VALID_SPECIES)" | grep -q "\b$(notdir $@)\b"; \
@@ -83,18 +116,13 @@ _guard_planet:  # Ensures a valid planet is selected (Do not use directly)
 	fi
 
 _confirm:  # Requires confirmation before proceeding (Do not use directly)
-	@echo -n "Are you sure? [y/N] " && read ans && [ $${ans:-N} = y ]
+	@if [[ -z "$(CONFIRM)" ]]; \
+	then \
+		@echo -n "Are you sure? [y/N] " && read ans && [ $${ans:-N} = y ]; \
+	fi
 
 
-## ---- Help printer ---------------------------------------------------------------------------------------------------
-
-RED    := \033[31m
-GREEN  := \033[32m
-YELLOW := \033[33m
-BLUE   := \033[34m
-TEAL   := \033[36m
-CLEAR  := \033[0m
-
+# ..... Help printer ...................................................................................................
 
 define PRINT_HELP_PREAMBLE
 BEGIN {
@@ -105,18 +133,24 @@ BEGIN {
 	print
 	print "Targets:"
 }
-/^## =+ [^=]+ =+.*/ {
+/^## =+ .+( =+)?/ {
     s = $$0
     sub(/^## =+ /, "", s)
     sub(/ =+/, "", s)
 	printf("\n  %s:\n", s)
+}
+/^## -+ .+( -+)?/ {
+    s = $$0
+    sub(/^## -+ /, "", s)
+    sub(/ -+/, "", s)
+	printf("\n    $(TEAL)> %s$(CLEAR)\n", s)
 }
 /^[$$()% 0-9a-zA-Z_\/-]+(\\:[$$()% 0-9a-zA-Z_\/-]+)*:.*?##/ {
     t = $$0
     sub(/:.*/, "", t)
     h = $$0
     sub(/.?*##/, "", h)
-    printf("    $(YELLOW)%-19s$(CLEAR) $(TEAL)%s$(CLEAR)\n", t, h)
+    printf("    $(YELLOW)%-19s$(CLEAR) $(GRAY)$(ITALIC)%s$(CLEAR)\n", t, h)
 }
 endef
 export PRINT_HELP_PREAMBLE

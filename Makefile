@@ -1,6 +1,14 @@
 VALID_SPECIES := jawa ewok hutt pyke
 VALID_PLANETS := tatooine endor nal-hutta oba-diah
-PLANET ?= tatooine
+DEFAULT_PLANET := tatooine
+PLANET ?= $(DEFAULT_PLANET)
+
+VERBOSE_FLAG :=
+ifdef VERBOSE
+	ifneq ($(filter $(VERBOSE), 1 t true yes y),)
+		VERBOSE_FLAG := --verbose
+	endif
+endif
 
 default: help
 
@@ -37,6 +45,10 @@ var-guarded: _guard_planet ## A target that includes a variable guard for planet
 
 pattern-guarded/%: _guard_species/%  ## A target with a pattern that includes a pattern guard for species
 	@echo Executing target with a pattern guard where species=$(notdir $@)
+
+
+tool-guarded: _guard_drivel ## A target that includes a script guard for the drivel tool
+	@echo Executing target with a tool guard where species=$$(drivel $(VERBOSE_FLAG) give --theme=star-wars --shuffle --no-fancy 1 | xargs)
 
 
 ## ==== Targets with sub-sections ======================================================================================
@@ -115,20 +127,59 @@ _guard_planet:  # Ensures a valid planet is selected (Do not use directly)
 		exit 1; \
 	fi
 
+_guard_drivel:  # Ensure that drivel is installed
+	@bash -c "$$ENSURE_DRIVEL_SCRIPT"
+
 _confirm:  # Requires confirmation before proceeding (Do not use directly)
 	@if [[ -z "$(CONFIRM)" ]]; \
 	then \
 		@echo -n "Are you sure? [y/N] " && read ans && [ $${ans:-N} = y ]; \
 	fi
 
+# ..... Ensure drivel is installed .....................................................................................
+
+define ENSURE_DRIVEL_SCRIPT
+	echo -e "$(TEAL)Ensuring drivel is available...$(CLEAR)"
+
+	echo -en "  $(YELLOW)→ Checking for drivel...$(CLEAR)"
+	if [[ ! $$(command -v drivel) ]]
+	then
+		echo -e "$(YELLOW)drivel not found! will attempt to install with uv$(CLEAR)"
+	else
+		echo -e "$(GREEN)drivel found!$(CLEAR)"
+		exit 0
+	fi
+
+	echo -en "  $(YELLOW)→ Checking for uv...$(CLEAR)"
+	if [[ ! $$(command -v uv) ]]
+	then
+		echo -e "$(RED)uv not found! $(YELLOW)see https://docs.astral.sh/uv/getting-started/installation/$(CLEAR)"
+		exit 1
+	else
+		echo -e "$(GREEN)uv found!$(CLEAR)"
+	fi
+
+	echo -en "  $(YELLOW)→ Installing drivel with uv...$(CLEAR)"
+	uv tool install py-drivel
+	SUCCESS=$$?
+	if (( $SUCCESS != 0 ))
+	then
+		echo -e "$(RED)Failed to install drivel!$(CLEAR)"
+		exit $$SUCCESS
+	else
+		echo -e "$(GREEN)drivel installed successfully!$(CLEAR)"
+	fi
+endef
+export ENSURE_DRIVEL_SCRIPT
+
 
 # ..... Help printer ...................................................................................................
 
 define PRINT_HELP_PREAMBLE
 BEGIN {
-	print "Usage: $(YELLOW)make <target> [PLANET=<planet>]$(CLEAR)"
+	print "Usage: $(YELLOW)make <target> [PLANET=<planet>] [VERBOSE=1] [ARG=<arg>...]$(CLEAR)"
 	print
-	print "PLANET values: $(GREEN)$(VALID_PLANETS)$(CLEAR)"
+	print "PLANET values: $(GREEN)$(VALID_PLANETS)$(CLEAR) $(TEAL)(default=$(DEFAULT_PLANET))$(CLEAR)"
 	print "SPECIES values: $(GREEN)$(VALID_SPECIES)$(CLEAR)"
 	print
 	print "Targets:"

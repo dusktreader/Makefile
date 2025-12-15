@@ -81,14 +81,6 @@ _confirm:  # Requires confirmation before proceeding (Do not use directly)
 
 # ..... Help printer ...................................................................................................
 
-RED    := \033[31m
-GREEN  := \033[32m
-YELLOW := \033[33m
-BLUE   := \033[34m
-TEAL   := \033[36m
-CLEAR  := \033[0m
-
-
 define PRINT_HELP_PREAMBLE
 BEGIN {
 	print "Usage: $(YELLOW)make <target>$(CLEAR)"

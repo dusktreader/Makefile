@@ -4,27 +4,31 @@ default: help
 ## ==== Container control ==============================================================================================
 
 start: _guard_env ## Bring all containers up.
-	docker compose up -d
+	docker compose up --build --detach && docker compose logs --follow --tail=30
+
+
+watch: _guard_env  ## Bring all containers up with file watching
+	docker compose up --build --watch
 
 
 stop:  ## Stop all containser.
 	docker compose stop
 
 
-tear-down: _confirm ## Bring down and destroy all containers.
-	docker compose down --remove-orphans
+tear-down: _confirm ## Bring down and destroy all containers and volumes.
+	docker compose down --remove-orphans --volumes
 
 
 ## ==== Advanced container actions =====================================================================================
 
 migrate: _guard_env  ## Apply all database migrations with the db-migrate init container.
-	docker compose up -d db-migrate
+	docker compose up --detach db-migrate
 
 bash: _guard_env  ## Connect to a terminal session inside the api container.
-	docker compose exec -it api bash
+	docker compose exec api bash
 
 psql: _guard_env start  ## Connect a psql session to the postgres instance running in the db container
-	psql postgresql://$(DB_USER):$(DB_PSWD)@localhost:5432/$(DB_NAME)
+	docker compose exec db psql -U $(DB_USER) -d $(DB_NAME)
 
 
 ## ==== Helpers ========================================================================================================
@@ -47,7 +51,10 @@ help:  ## Show help message
 
 .ONESHELL:
 SHELL:=/bin/bash
-.PHONY: default start stop tear-down migrate bash psql clean help _guard_env _confirm
+.PHONY: default \
+	start watch stop tear-down \
+	migrate bash psql \
+	dotenv compose clean help
 
 
 # ..... Color table for pretty printing ................................................................................
